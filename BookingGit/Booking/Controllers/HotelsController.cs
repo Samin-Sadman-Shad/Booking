@@ -1,8 +1,11 @@
 ﻿using Booking.Data;
 using Booking.Model;
+using Booking.Utility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nest;
+using System;
 
 namespace Booking.Controllers
 {
@@ -44,6 +47,53 @@ namespace Booking.Controllers
             var hotels = await _context.Hotels.Where(h => h.Name.Contains(name) || h.Description.Contains(description)).ToListAsync();
             return hotels;
         }
+
+
+        [HttpGet("filter")]
+        public async Task<ActionResult<IEnumerable<Hotel>>> FilterHotels([FromQuery]string city, [FromQuery] decimal? maxPrice, [FromQuery] Rate? minRating)
+        {
+            IQueryable<Hotel> query = _context.Hotels;
+
+            if (!string.IsNullOrEmpty(city))
+            {
+                query = query
+                    .Where(h => h.Location.City.Name.ToLower().Contains(city.ToLower()));
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query
+                    .Where(h => h.Price != null)
+                    .Where(h => h.Price.AccommodationPrice + h.Price.FoodPrice + h.Price.ServiceCharge <= maxPrice);
+            }
+
+            if (minRating.HasValue)
+            {
+                query = query
+                    .Where(h => h.Ratings.Any(r => r.Rate >= minRating));
+            }
+
+            return await query.ToListAsync();
+        }
+
+
+        [HttpGet("nearest")]
+        public async Task<ActionResult<IEnumerable<Hotel>>> GetHotelsByLocation([FromQuery] double latitude, [FromQuery] double longitude, [FromQuery] double distance)
+        {
+            var nearests = await _context.Hotels.
+                Select(h => new 
+                { 
+                    Hotel = h, 
+                    Distance = GeoCalculator.CalculateDistance(latitude, longitude, h.Location.Latitude, h.Location.Longitude) 
+                })
+                .Where(x => x.Distance < distance)
+                .OrderBy(x => x.Distance)
+                .Select(x => x.Hotel)
+                .ToListAsync();
+
+            return nearests;
+        }
+
 
         [HttpPost]
         [ProducesResponseType<Hotel>(StatusCodes.Status201Created)]
@@ -96,5 +146,6 @@ namespace Booking.Controllers
         {
             return _context.Hotels.Any(h => id == h.Id);
         }
+
     }
 }

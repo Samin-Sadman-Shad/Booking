@@ -42,7 +42,10 @@ namespace Booking.Controllers
                 return BadRequest();
             }
 
-            var rating = await _context.Ratings.Where(r => r.HotelId == hotelId).ToListAsync();
+            var rating = await _context.Ratings
+                .Where(r => r.HotelId == hotelId)
+                .OrderByDescending(r => r.Rate)
+                .ToListAsync();
             if (rating is null)
             {
                 return NotFound();
