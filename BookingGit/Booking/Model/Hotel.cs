@@ -12,5 +12,7 @@ namespace Booking.Model
 
         public ICollection<Rating>? Ratings { get; set; }
         public ICollection<Price>?  Prices { get; set; }
+
+        public Location Location { get; set; }
     }
 }
